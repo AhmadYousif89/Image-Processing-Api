@@ -14,19 +14,22 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const path_1 = __importDefault(require("path"));
 const sharp_1 = __importDefault(require("sharp"));
+const originals_1 = require("./originals");
 const control_1 = require("./control");
-const originalImgs_1 = require("./originalImgs");
 // using (Sharp) module to resize the desired image.
 const imgResize = (info) => __awaiter(void 0, void 0, void 0, function* () {
-    const originalImage = path_1.default.join(control_1.originalImgsPath, `${info.image}.jpg`);
-    if (yield (0, originalImgs_1.isImgExist)(info.image)) {
-        const image = yield (0, sharp_1.default)(originalImage)
+    const originalImg = path_1.default.join(control_1.originalImgsPath, `${info.image}.jpg`);
+    const thumbnailImg = path_1.default.join(control_1.thumbImgsPath, `${info.image}_${info.width}_${info.height}.png`);
+    if (yield (0, originals_1.isImgExist)(info.image)) {
+        yield (0, sharp_1.default)(originalImg)
             .resize(info.width, info.height, { fit: "contain" })
+            .toFormat("png")
             .png()
-            .toBuffer();
-        return image;
+            .toFile(thumbnailImg);
+        return null;
     }
     else
-        return [];
+        return "Unable to process your image !";
 });
 exports.default = imgResize;
+// imgResize({ image: "galaxy", width: -200, height: 200 }).then((data) => console.log(data));

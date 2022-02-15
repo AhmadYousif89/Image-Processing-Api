@@ -1,17 +1,19 @@
 import path from "path";
 import sharp from "sharp";
-import { ImageParams, originalImgsPath } from "./control";
-import { isImgExist } from "./originalImgs";
+import { isImgExist } from "./originals";
+import { ImageParams, originalImgsPath, thumbImgsPath } from "./control";
 
 // using (Sharp) module to resize the desired image.
-const imgResize = async (info: ImageParams): Promise<Buffer | string[]> => {
-  const originalImage = path.join(originalImgsPath, `${info.image}.jpg`);
+const imgResize = async (info: ImageParams): Promise<string | null> => {
+  const originalImg = path.join(originalImgsPath, `${info.image}.jpg`);
+  const thumbnailImg = path.join(thumbImgsPath, `${info.image}_${info.width}_${info.height}.png`);
   if (await isImgExist(info.image)) {
-    const image = await sharp(originalImage)
+    await sharp(originalImg)
       .resize(info.width as number, info.height as number, { fit: "contain" })
+      .toFormat("png")
       .png()
-      .toBuffer();
-    return image;
-  } else return [];
+      .toFile(thumbnailImg);
+    return null;
+  } else return "Unable to process your image !";
 };
 export default imgResize;

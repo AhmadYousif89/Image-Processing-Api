@@ -7,7 +7,7 @@ app.use(express.static("public"));
 app.use(express.json());
 
 app.use("/", routes);
-app.get("/", (req, res) => {
+app.get("/", (req: express.Request, res: express.Response) => {
   res.send(`<h1>Home Page</h1>`);
 });
 

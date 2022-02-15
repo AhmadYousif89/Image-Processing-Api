@@ -8,58 +8,55 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.imageRoute = void 0;
-const fs_1 = require("fs");
-const imageProcessing_1 = __importDefault(require("./imageProcessing"));
-const originalImgs_1 = require("./originalImgs");
-const thumbsImgs_1 = require("./thumbsImgs");
+const getImage_1 = require("./getImage");
+const originals_1 = require("./originals");
+const thumbnails_1 = require("./thumbnails");
+const validate = (info) => __awaiter(void 0, void 0, void 0, function* () {
+    if (!info.image && !info.width && !info.height) {
+        return `<h2>Image API</h2>`;
+    }
+    if (!(yield (0, originals_1.isImgExist)(info.image))) {
+        const availableImages = yield (0, originals_1.mapOnImgs)();
+        return `Available images are :- [ ${availableImages} ]`;
+    }
+    if (!info.width && !info.height) {
+        return null;
+    }
+    if (Number.isNaN(info.width) || info.width < 10) {
+        return "Please provide a positive integer value [more than 10] for the 'width' !";
+    }
+    if (Number.isNaN(info.height) || info.height < 10) {
+        return "Please provide a positive integer value [more than 10] for the 'height' !";
+    }
+    return null;
+});
 const imageRoute = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // storing the requsted querys in variables.
     const image = req.query.image;
     // converting the width & height to numbers.
     const width = parseInt(req.query.width);
     const height = parseInt(req.query.height);
-    // validating the query parameteres.
-    if (!image && !width && !height) {
-        res.send(`<h2>Image API</h2>`);
+    // check validations
+    const userMsg = yield validate({ image: image, width: width, height: height });
+    if (userMsg) {
+        res.send(userMsg);
+        return;
     }
-    else if ((image && !width) || !height) {
-        // will check if the requsted image exist or not.
-        if (!(yield (0, originalImgs_1.isImgExist)(image))) {
-            const availableImages = yield (0, originalImgs_1.mapOnImgs)();
-            res.send(`Available images are :- [ ${availableImages} ].`);
-        }
-        else {
-            // if image exist will display the original image.
-            const imgPath = yield (0, originalImgs_1.getImage)(image);
-            res.sendFile(imgPath);
+    let result;
+    if (!(yield (0, thumbnails_1.isThumbExist)({ image, width, height }))) {
+        result = yield (0, thumbnails_1.createThumbnail)({ image: image, width: width, height: height });
+        if (result) {
+            res.send(result);
+            return;
         }
     }
-    else if ((image && width) || (image && height)) {
-        // checking for positive integers for the (width & height).
-        if (width < 1) {
-            res.send("Please provide a positive integer value for the 'width' !");
-        }
-        else if (height < 1) {
-            res.send("Please provide a positive integer value for the 'height' !");
-        }
-        else {
-            /*
-            if all checks ok, we run these functions.
-            1- create thumbnail folder.
-            2- resize the requsted image and store it in a const as a buffer.
-            3- write the buffer to the constracted path to thumbnail folder then send back the image.
-            */
-            yield (0, thumbsImgs_1.createThumbsFolder)();
-            const resizedThumb = yield (0, imageProcessing_1.default)({ image: image, width: width, height: height });
-            const thumbPath = yield (0, thumbsImgs_1.getThumbImg)(image, width, height);
-            yield fs_1.promises.writeFile(thumbPath, resizedThumb);
-            res.sendFile(thumbPath);
-        }
+    result = yield (0, getImage_1.getImage)({ image: image, width: width, height: height });
+    if (result) {
+        res.sendFile(result);
     }
+    else
+        res.send("opps :|");
 });
 exports.imageRoute = imageRoute;

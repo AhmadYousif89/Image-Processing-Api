@@ -1,8 +1,28 @@
 import express from "express";
-import { promises as fsPromises } from "fs";
-import imgResize from "./imageProcessing";
-import { getImage, isImgExist, mapOnImgs } from "./originalImgs";
-import { createThumbsFolder, getThumbImg } from "./thumbsImgs";
+import { getImage } from "./getImage";
+import { ImageParams } from "./control";
+import { isImgExist, mapOnImgs } from "./originals";
+import { createThumbnail, isThumbExist } from "./thumbnails";
+
+const validate = async (info: ImageParams): Promise<string | null> => {
+  if (!info.image && !info.width && !info.height) {
+    return `<h2>Image API</h2>`;
+  }
+  if (!(await isImgExist(info.image))) {
+    const availableImages = await mapOnImgs();
+    return `Available images are :- [ ${availableImages} ]`;
+  }
+  if (!info.width && !info.height) {
+    return null;
+  }
+  if (Number.isNaN(info.width) || info.width < 10) {
+    return "Please provide a positive integer value [more than 10] for the 'width' !";
+  }
+  if (Number.isNaN(info.height) || info.height < 10) {
+    return "Please provide a positive integer value [more than 10] for the 'height' !";
+  }
+  return null;
+};
 
 export const imageRoute = async (req: express.Request, res: express.Response): Promise<void> => {
   // storing the requsted querys in variables.
@@ -10,37 +30,24 @@ export const imageRoute = async (req: express.Request, res: express.Response): P
   // converting the width & height to numbers.
   const width = parseInt(req.query.width as string);
   const height = parseInt(req.query.height as string);
-  // validating the query parameteres.
-  if (!image && !width && !height) {
-    res.send(`<h2>Image API</h2>`);
-  } else if ((image && !width) || !height) {
-    // will check if the requsted image exist or not.
-    if (!(await isImgExist(image))) {
-      const availableImages = await mapOnImgs();
-      res.send(`Available images are :- [ ${availableImages} ].`);
-    } else {
-      // if image exist will display the original image.
-      const imgPath = await getImage(image);
-      res.sendFile(imgPath);
-    }
-  } else if ((image && width) || (image && height)) {
-    // checking for positive integers for the (width & height).
-    if (width < 1) {
-      res.send("Please provide a positive integer value for the 'width' !");
-    } else if (height < 1) {
-      res.send("Please provide a positive integer value for the 'height' !");
-    } else {
-      /* 
-      if all checks ok, we run these functions.
-      1- create thumbnail folder.
-      2- resize the requsted image and store it in a const as a buffer.
-      3- write the buffer to the constracted path to thumbnail folder then send back the image. 
-      */
-      await createThumbsFolder();
-      const resizedThumb = await imgResize({ image: image, width: width, height: height });
-      const thumbPath = await getThumbImg(image, width, height);
-      await fsPromises.writeFile(thumbPath, resizedThumb);
-      res.sendFile(thumbPath);
+  // check validations
+  const userMsg = await validate({ image: image, width: width, height: height });
+  if (userMsg) {
+    res.send(userMsg);
+    return;
+  }
+
+  let result: null | string;
+  if (!(await isThumbExist({ image, width, height }))) {
+    result = await createThumbnail({ image: image, width: width, height: height });
+    if (result) {
+      res.send(result);
+      return;
     }
   }
+  // sending the image.
+  result = await getImage({ image: image, width: width, height: height });
+  if (result) {
+    res.sendFile(result);
+  } else res.send("opps :|");
 };

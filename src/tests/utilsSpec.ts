@@ -1,25 +1,39 @@
+import { getImage } from "../utils/getImage";
 import imgResize from "../utils/imageProcessing";
-import { getImage, mapOnImgs } from "../utils/originalImgs";
-import { getThumbImg } from "../utils/thumbsImgs";
+import { mapOnImgs } from "../utils/originals";
+import { createThumbnail } from "../utils/thumbnails";
 
 describe("Test the functionality of sharp module: \n", () => {
   it("should successfuly generate new image ", async () => {
     await expectAsync(imgResize({ image: "galaxy", width: 200, height: 200 })).toBeResolved();
   });
-  it("should return error (Input file is missing)", async () => {
-    await expectAsync(imgResize({ image: "", width: 200, height: 200 })).toBeRejectedWithError(
-      Error,
-      "Input file is missing"
+  it("should return error msg (Unable to process your image !)", async () => {
+    await expectAsync(imgResize({ image: "", width: 200, height: 200 })).toBeResolvedTo(
+      "Unable to process your image !"
     );
   });
-  it("should reject the operation", async () => {
-    await expectAsync(imgResize({ image: "", width: 0, height: 0 })).toBeRejected();
+  it("should return error msg (Unable to process your image !)", async () => {
+    await expectAsync(imgResize({ image: "", width: -55, height: -55 })).toBeResolvedTo(
+      "Unable to process your image !"
+    );
+  });
+  it("should return error msg (Expected positive integer for width but received -55 of type number)", async () => {
+    await expectAsync(imgResize({ image: "galaxy", width: -55, height: 55 })).toBeRejectedWithError(
+      Error,
+      "Expected positive integer for width but received -55 of type number"
+    );
+  });
+  it("should return error msg (Expected positive integer for height but received -55 of type number)", async () => {
+    await expectAsync(imgResize({ image: "galaxy", width: 55, height: -55 })).toBeRejectedWithError(
+      Error,
+      "Expected positive integer for height but received -55 of type number"
+    );
   });
 });
 
 describe("Testing the Utilities function: \n", () => {
   it("should return image name (galaxy)", async () => {
-    const result = await getImage("galaxy");
+    const result = await getImage({ image: "galaxy", width: 200, height: 200 });
     expect(result).toContain("galaxy");
   });
   it("should return image name (galaxy) inside original images folder", async () => {
@@ -27,7 +41,7 @@ describe("Testing the Utilities function: \n", () => {
     expect(result).toContain("galaxy");
   });
   it("should return the resized image of (aerial_view_200_200.png) from inside thumbs images folder", async () => {
-    const result = await getThumbImg("aerial_view", 200, 200);
+    const result = await createThumbnail({ image: "aerial_view", width: 200, height: 200 });
     expect(result).not.toContain("galaxy_200_200.png");
   });
 });
